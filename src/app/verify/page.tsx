@@ -16,7 +16,7 @@ export default function VerifyProduct() {
     params: [queriedId],
     queryOptions: {
       enabled: !!queriedId,
-      retry: false
+      retry: 0
     }
   });
 
