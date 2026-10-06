@@ -1,16 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useActiveAccount, useSendTransaction } from 'thirdweb/react';
+import { prepareContractCall } from 'thirdweb';
+import { proofTrackContract } from '@/lib/client';
 import { ArrowRightLeft, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
-import { parseAbi } from 'viem';
-
-const contractAbi = parseAbi([
-  'function transferProduct(string _id, address _to, string _location, string _note) public',
-]);
 
 export default function TransferProduct() {
-  const { isConnected } = useAccount();
+  const activeAccount = useActiveAccount();
+  const isConnected = !!activeAccount;
+
   const [formData, setFormData] = useState({
     id: '',
     to: '',
@@ -18,24 +17,40 @@ export default function TransferProduct() {
     note: '',
   });
 
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+  const { mutateAsync: sendTx, isPending } = useSendTransaction();
+  const [hash, setHash] = useState('');
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [isConfirmed, setIsConfirmed] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isConnected) return;
     
-    writeContract({
-      address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`,
-      abi: contractAbi,
-      functionName: 'transferProduct',
-      args: [
-        formData.id,
-        formData.to as `0x${string}`,
-        formData.location,
-        formData.note,
-      ],
-    });
+    setError(null);
+    setIsConfirming(false);
+    setIsConfirmed(false);
+    setHash('');
+    
+    try {
+      const tx = prepareContractCall({
+        contract: proofTrackContract,
+        method: "function transferProduct(string _id, address _to, string _location, string _note) public",
+        params: [
+          formData.id,
+          formData.to,
+          formData.location,
+          formData.note
+        ]
+      });
+
+      const receipt = await sendTx(tx);
+      setHash(receipt.transactionHash);
+      setIsConfirmed(true);
+    } catch (err: any) {
+      console.error(err);
+      setError(err);
+    }
   };
 
   if (!isConnected) {

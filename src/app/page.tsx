@@ -1,69 +1,129 @@
+'use client';
+
 import Link from 'next/link';
-import { ArrowRight, CheckCircle2, Shield, Activity } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useActiveAccount, ConnectButton } from 'thirdweb/react';
+import { createWallet, walletConnect } from 'thirdweb/wallets';
+import { client, activeChain } from '@/lib/client';
+import { ArrowRight, Shield, CheckCircle2, Activity, Box } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+
+// Only safe wallets — no Coinbase Base Account (avoids @x402 broken deps)
+const wallets = [
+  createWallet("io.metamask"),
+  createWallet("com.coinbase.wallet"),
+  walletConnect(),
+  createWallet("com.trustwallet.app"),
+  createWallet("app.phantom"),
+];
 
 export default function Home() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const activeAccount = useActiveAccount();
+  const isConnected = !!activeAccount;
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isConnected) {
+      router.push('/dashboard');
+    }
+  }, [isConnected, router]);
+
+  if (isConnected) return null;
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh] text-center max-w-4xl mx-auto space-y-16">
+    <div className="flex flex-col items-center justify-center min-h-[85vh] text-center max-w-5xl mx-auto px-4 relative">
       
+      {/* Background glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[120px] -z-10 pointer-events-none" />
+
       {/* Hero Section */}
-      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-        <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="space-y-8 max-w-3xl"
+      >
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium mb-4">
+          <Box className="w-4 h-4" />
+          <span>Web3 Provenance Engine</span>
+        </div>
+
+        <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-slate-100 leading-[1.1]">
           Verify the journey of <br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-500">
             every product.
           </span>
         </h1>
-        <p className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
-          ProofTrack records important product lifecycle events on-chain, creating a transparent and verifiable history from manufacturer to customer.
+        
+        <p className="text-lg md:text-xl text-slate-400 leading-relaxed max-w-2xl mx-auto">
+          ProofTrack records product lifecycle events immutably on-chain. 
+          Create a transparent, verifiable history from the manufacturer directly to your customer's hands.
         </p>
         
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
-          <Link 
-            href="/create" 
-            className="w-full sm:w-auto px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-all flex items-center justify-center gap-2 hover:gap-3"
-          >
-            Create Product <ArrowRight className="w-5 h-5" />
-          </Link>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6">
+          {!mounted ? (
+            <div className="w-52 h-14 bg-slate-800 rounded-full animate-pulse" />
+          ) : (
+            <ConnectButton
+              client={client}
+              chain={activeChain}
+              wallets={wallets}
+              connectButton={{
+                label: "Connect to Get Started",
+                className: "!rounded-full !px-8 !py-4 !font-semibold !bg-white !text-slate-950 hover:!bg-slate-200 !transition-all",
+              }}
+            />
+          )}
           <Link 
             href="/verify" 
-            className="w-full sm:w-auto px-8 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg font-medium transition-all"
+            className="w-full sm:w-auto px-8 py-4 bg-slate-900/50 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-full font-medium transition-all backdrop-blur-sm flex items-center justify-center"
           >
-            Verify Product
+            Verify a Product
           </Link>
         </div>
-      </div>
+      </motion.div>
 
-      {/* Visual Journey */}
-      <div className="w-full max-w-3xl mx-auto bg-slate-900/50 border border-slate-800 rounded-2xl p-8 backdrop-blur-sm animate-in fade-in duration-1000 delay-300">
-        <div className="flex flex-col md:flex-row items-center justify-between relative">
-          {/* Connector Line */}
-          <div className="hidden md:block absolute top-1/2 left-0 right-0 h-0.5 bg-slate-800 -z-10 -translate-y-1/2"></div>
-          
-          <Step icon={CheckCircle2} title="Manufacturer" delay="delay-100" />
-          <div className="h-8 w-0.5 md:hidden bg-slate-800 my-2"></div>
-          <Step icon={Activity} title="Distributor" delay="delay-200" />
-          <div className="h-8 w-0.5 md:hidden bg-slate-800 my-2"></div>
-          <Step icon={Shield} title="Retailer" delay="delay-300" />
-          <div className="h-8 w-0.5 md:hidden bg-slate-800 my-2"></div>
-          <Step icon={CheckCircle2} title="Customer" delay="delay-400" />
+      {/* Features */}
+      <motion.div 
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
+        className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-24 w-full"
+      >
+        <div className="bg-slate-900/40 border border-slate-800/50 p-6 rounded-2xl backdrop-blur-sm text-left hover:bg-slate-900/60 transition-colors">
+          <div className="w-12 h-12 bg-blue-500/10 text-blue-400 rounded-xl flex items-center justify-center mb-4">
+            <CheckCircle2 className="w-6 h-6" />
+          </div>
+          <h3 className="text-xl font-semibold text-slate-200 mb-2">Immutable Records</h3>
+          <p className="text-slate-400 text-sm leading-relaxed">
+            Every product creation and transfer is securely logged on the Ethereum blockchain, ensuring data cannot be tampered with.
+          </p>
         </div>
-        
-        <div className="mt-12 text-sm text-slate-500 font-mono flex items-center justify-center gap-2 bg-slate-950/50 py-3 rounded-lg border border-slate-800/50">
-          <Shield className="w-4 h-4 text-emerald-500" />
-          Secured and Verified by Ethereum Blockchain
-        </div>
-      </div>
-    </div>
-  );
-}
 
-function Step({ icon: Icon, title, delay }: { icon: any, title: string, delay: string }) {
-  return (
-    <div className={`flex flex-col items-center gap-3 bg-slate-900 md:bg-transparent px-4 py-2 ${delay} animate-in zoom-in duration-500`}>
-      <div className="w-12 h-12 rounded-full bg-slate-800 border-2 border-slate-700 flex items-center justify-center text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.15)]">
-        <Icon className="w-6 h-6" />
-      </div>
-      <span className="font-medium text-slate-300">{title}</span>
+        <div className="bg-slate-900/40 border border-slate-800/50 p-6 rounded-2xl backdrop-blur-sm text-left hover:bg-slate-900/60 transition-colors">
+          <div className="w-12 h-12 bg-purple-500/10 text-purple-400 rounded-xl flex items-center justify-center mb-4">
+            <Activity className="w-6 h-6" />
+          </div>
+          <h3 className="text-xl font-semibold text-slate-200 mb-2">Lifecycle Tracking</h3>
+          <p className="text-slate-400 text-sm leading-relaxed">
+            Follow a product's exact journey through manufacturers, distributors, and retailers with precise timestamps and locations.
+          </p>
+        </div>
+
+        <div className="bg-slate-900/40 border border-slate-800/50 p-6 rounded-2xl backdrop-blur-sm text-left hover:bg-slate-900/60 transition-colors">
+          <div className="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-xl flex items-center justify-center mb-4">
+            <Shield className="w-6 h-6" />
+          </div>
+          <h3 className="text-xl font-semibold text-slate-200 mb-2">Public Verification</h3>
+          <p className="text-slate-400 text-sm leading-relaxed">
+            Anyone can verify a product's authenticity and provenance history instantly without needing a Web3 wallet.
+          </p>
+        </div>
+      </motion.div>
     </div>
   );
 }

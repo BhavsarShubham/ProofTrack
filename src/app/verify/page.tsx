@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useReadContract } from 'wagmi';
+import { useReadContract } from 'thirdweb/react';
+import { proofTrackContract } from '@/lib/client';
 import { Search, ShieldCheck, ShieldAlert, Package, MapPin, Building, ArrowRight, Clock, Box } from 'lucide-react';
-import { PROOF_TRACK_ABI } from '@/lib/contract';
 import { format } from 'date-fns';
 
 export default function VerifyProduct() {
@@ -11,23 +11,21 @@ export default function VerifyProduct() {
   const [queriedId, setQueriedId] = useState('');
 
   const { data: productData, isLoading: isLoadingProduct, isError: isProductError } = useReadContract({
-    address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`,
-    abi: PROOF_TRACK_ABI,
-    functionName: 'getProduct',
-    args: [queriedId],
-    query: {
+    contract: proofTrackContract,
+    method: "function getProduct(string _id) view returns (string id, string name, string manufacturer, string category, string description, address currentOwner, bool exists)",
+    params: [queriedId],
+    queryOptions: {
       enabled: !!queriedId,
       retry: false
     }
   });
 
   const { data: historyData, isLoading: isLoadingHistory } = useReadContract({
-    address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`,
-    abi: PROOF_TRACK_ABI,
-    functionName: 'getProductHistory',
-    args: [queriedId],
-    query: {
-      enabled: !!queriedId && !!productData && (productData as any).exists,
+    contract: proofTrackContract,
+    method: "function getProductHistory(string _id) view returns ((string eventType, address from, address to, uint256 timestamp, string location, string note)[])",
+    params: [queriedId],
+    queryOptions: {
+      enabled: !!queriedId && !!productData?.[6], // productData[6] is the `exists` boolean
     }
   });
 
@@ -36,7 +34,17 @@ export default function VerifyProduct() {
     setQueriedId(searchId);
   };
 
-  const product = productData as any;
+  // thirdweb's useReadContract with a tuple returns an array of values
+  const product = productData ? {
+    id: productData[0],
+    name: productData[1],
+    manufacturer: productData[2],
+    category: productData[3],
+    description: productData[4],
+    currentOwner: productData[5],
+    exists: productData[6]
+  } : null;
+
   const history = historyData as any[];
   
   const isLoading = isLoadingProduct || isLoadingHistory;

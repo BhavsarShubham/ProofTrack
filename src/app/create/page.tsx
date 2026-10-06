@@ -1,18 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { PROOF_TRACK_ABI } from '@/lib/contract';
+import { useActiveAccount, useSendTransaction, useSendAndConfirmTransaction } from 'thirdweb/react';
+import { prepareContractCall } from 'thirdweb';
+import { proofTrackContract } from '@/lib/client';
 import { PackagePlus, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
-import { parseAbi } from 'viem';
-
-// We could import PROOF_TRACK_ABI but since it's very large, we can just use the specific functions we need via human-readable ABI to save context.
-const contractAbi = parseAbi([
-  'function createProduct(string _id, string _name, string _manufacturer, string _category, string _description, string _location) public',
-]);
 
 export default function CreateProduct() {
-  const { isConnected } = useAccount();
+  const activeAccount = useActiveAccount();
+  const isConnected = !!activeAccount;
+  
   const [formData, setFormData] = useState({
     id: '',
     name: '',
@@ -22,28 +19,42 @@ export default function CreateProduct() {
     location: '',
   });
 
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { mutateAsync: sendTx, isPending } = useSendTransaction();
+  const [hash, setHash] = useState('');
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [isConfirmed, setIsConfirmed] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
 
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = 
-    useWaitForTransactionReceipt({ hash });
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isConnected) return;
     
-    writeContract({
-      address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`,
-      abi: contractAbi,
-      functionName: 'createProduct',
-      args: [
-        formData.id,
-        formData.name,
-        formData.manufacturer,
-        formData.category,
-        formData.description,
-        formData.location,
-      ],
-    });
+    setError(null);
+    setIsConfirming(false);
+    setIsConfirmed(false);
+    setHash('');
+    
+    try {
+      const tx = prepareContractCall({
+        contract: proofTrackContract,
+        method: "function createProduct(string _id, string _name, string _manufacturer, string _category, string _description, string _location) public",
+        params: [
+          formData.id,
+          formData.name,
+          formData.manufacturer,
+          formData.category,
+          formData.description,
+          formData.location
+        ]
+      });
+
+      const receipt = await sendTx(tx);
+      setHash(receipt.transactionHash);
+      setIsConfirmed(true);
+    } catch (err: any) {
+      console.error(err);
+      setError(err);
+    }
   };
 
   if (!isConnected) {
@@ -157,7 +168,6 @@ export default function CreateProduct() {
           </button>
         </form>
 
-        {/* Transaction Status */}
         {hash && (
           <div className="mt-6 p-4 bg-slate-950 border border-slate-800 rounded-lg space-y-2">
             <h4 className="text-sm font-medium text-slate-400">Transaction Status</h4>

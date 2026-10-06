@@ -1,15 +1,28 @@
 'use client';
 
 import Link from 'next/link';
-import { useAccount, useConnect, useDisconnect } from 'wagmi';
-import { injected } from 'wagmi/connectors';
-import { Wallet, LogOut, Package, PackagePlus, ArrowRightLeft } from 'lucide-react';
+import { useActiveAccount, ConnectButton } from 'thirdweb/react';
+import { client, activeChain } from '@/lib/client';
+import { createWallet, walletConnect, inAppWallet } from 'thirdweb/wallets';
+import { Wallet, Package, PackagePlus, ArrowRightLeft } from 'lucide-react';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
+
+// Only include wallets that don't have broken peer deps
+const wallets = [
+  createWallet("io.metamask"),
+  createWallet("com.coinbase.wallet"),
+  walletConnect(),
+  createWallet("com.trustwallet.app"),
+  createWallet("app.phantom"),
+];
 
 export function Navbar() {
-  const { address, isConnected } = useAccount();
-  const { connect } = useConnect();
-  const { disconnect } = useDisconnect();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const activeAccount = useActiveAccount();
+  const isConnected = !!activeAccount;
   const pathname = usePathname();
 
   const navLinks = [
@@ -31,6 +44,8 @@ export function Navbar() {
             
             <div className="hidden md:flex gap-1">
               {navLinks.map((link) => {
+                if (!isConnected && link.path !== '/verify') return null;
+                
                 const isActive = pathname === link.path;
                 return (
                   <Link
@@ -51,27 +66,17 @@ export function Navbar() {
           </div>
 
           <div className="flex items-center gap-4">
-            {isConnected ? (
-              <div className="flex items-center gap-4">
-                <div className="text-sm text-slate-300 font-mono bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">
-                  {address?.slice(0, 6)}...{address?.slice(-4)}
-                </div>
-                <button
-                  onClick={() => disconnect()}
-                  className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-full transition-colors"
-                  title="Disconnect"
-                >
-                  <LogOut className="w-5 h-5" />
-                </button>
-              </div>
+            {!mounted ? (
+              <div className="w-24 h-9 bg-slate-800 rounded-md animate-pulse" />
             ) : (
-              <button
-                onClick={() => connect({ connector: injected() })}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
-              >
-                <Wallet className="w-4 h-4" />
-                Connect Wallet
-              </button>
+              <ConnectButton
+                client={client}
+                chain={activeChain}
+                wallets={wallets}
+                connectButton={{
+                  label: "Connect Wallet",
+                }}
+              />
             )}
           </div>
         </div>

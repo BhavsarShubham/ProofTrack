@@ -1,16 +1,13 @@
 'use client';
 
-import { useAccount, useReadContract } from 'wagmi';
+import { useActiveAccount } from 'thirdweb/react';
 import { Wallet, Package, Activity, AlertCircle } from 'lucide-react';
-import { PROOF_TRACK_ABI } from '@/lib/contract';
 import Link from 'next/link';
 
 export default function Dashboard() {
-  const { address, isConnected } = useAccount();
-
-  // For a real app, we'd index this data with a subgraph or backend.
-  // For the MVP, we just show connection status and simple stats placeholders 
-  // since iterating over all products on-chain is inefficient.
+  const activeAccount = useActiveAccount();
+  const address = activeAccount?.address;
+  const isConnected = !!activeAccount;
 
   if (!isConnected) {
     return (
